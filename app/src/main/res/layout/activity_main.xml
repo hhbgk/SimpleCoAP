@@ -23,6 +23,16 @@
             android:layout_height="wrap_content"
             android:layout_weight="0.5"
             android:text="CMDX_5"
+            android:inputType="text"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Token:"/>
+        <EditText
+            android:id="@+id/edit_token"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5"
             android:inputType="number"/>
     </LinearLayout>
 

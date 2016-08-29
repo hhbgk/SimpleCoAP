@@ -16,6 +16,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText mEditText;
     private EditText mEditPayload;
     private EditText mEditCmdParam;
+    private EditText mEditToken;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,12 +25,15 @@ public class MainActivity extends AppCompatActivity {
 
         mEditPayload = (EditText) findViewById(R.id.edit_payload);
         mEditCmdParam = (EditText) findViewById(R.id.edit_query);
+        mEditToken = (EditText) findViewById(R.id.edit_token);
 
         if (coAPClient == null) {
-            coAPClient = new CoAPClient("192.168.9.141");
+            coAPClient = new CoAPClient("192.168.9.191");
         }
 
         mEditText = (EditText) findViewById(R.id.edit_url);
+        //mEditText.setText(".well-known/core");
+        mEditText.setText("CMDX_");
 
         Button get = (Button) findViewById(R.id.get);
         assert get != null;
@@ -40,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
                 CoAPRequest coAPRequest = new CoAPRequest();
                 coAPRequest.setMethod(CoAPClient.COAP_REQUEST_GET);
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
-                coAPRequest.setToken((short) 5);
+                coAPRequest.setToken(Short.parseShort(mEditToken.getText().toString().trim()));
 
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
                 request(coAPRequest);
@@ -55,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
                 CoAPRequest coAPRequest = new CoAPRequest();
                 coAPRequest.setMethod(CoAPClient.COAP_REQUEST_POST);
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
-                coAPRequest.setToken((short) 5);
+                coAPRequest.setToken(Short.parseShort(mEditToken.getText().toString().trim()));
 
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
                 request(coAPRequest);
@@ -68,12 +72,12 @@ public class MainActivity extends AppCompatActivity {
         coAPClient.request(request, new CoAPClient.OnResponseListener() {
             @Override
             public void onSuccess(byte[] data) {
-                Log.w(tag, "receive:" + new String(data));
+                //Log.w(tag, "receive:" + new String(data));
             }
 
             @Override
             public void onFailure(String message) {
-                Log.e(tag, "fail to setup CoAP");
+                Log.e(tag, "fail to setup CoAP:"+ message);
             }
         });
     }

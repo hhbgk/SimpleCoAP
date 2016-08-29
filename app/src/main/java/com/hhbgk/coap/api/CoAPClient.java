@@ -40,8 +40,12 @@ public class CoAPClient {
     private HandlerThread mHandlerThread;
     private Handler mHandler;
     public CoAPClient(String serverIP){
+        this(serverIP, true);
+    }
+    public CoAPClient(String serverIP, boolean isSecure){
+        mServerIP = serverIP;
         nativeInit();
-        setServerIP(serverIP);
+        _setup(serverIP, isSecure);
 
         mHandlerThread = new HandlerThread("HandlerThread_"+new Random().nextInt(Integer.MAX_VALUE));
         mHandlerThread.start();
@@ -63,7 +67,7 @@ public class CoAPClient {
         });
     }
     private native void nativeInit();
-    private native boolean _setup(String ip);
+    private native boolean _setup(String ip, boolean isSecure);
     private native long[] _new_request(int method, short token, String url, String[] query, String payload);
     //private native boolean _request(int method, String url);
     private native boolean _request(long requestAddress);
@@ -72,11 +76,6 @@ public class CoAPClient {
     public interface OnResponseListener {
         void onSuccess(byte[] data);
         void onFailure(String message);
-    }
-
-    private void setServerIP(String ip){
-        mServerIP = ip;
-        _setup(ip);
     }
 
     public void release(){

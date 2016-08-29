@@ -19,9 +19,9 @@
 
 
 int coap_insert(coap_list_t **head, coap_list_t *node) {
-	log_d("%s", __func__);
+	logd("%s", __func__);
   if (!node) {
-    log_e( "cannot create option Proxy-Uri");
+    loge( "cannot create option Proxy-Uri");
   } else {
     /* must append at the list end to avoid re-ordering of
      * options during sort */
@@ -33,7 +33,7 @@ int coap_insert(coap_list_t **head, coap_list_t *node) {
 
 int
 coap_delete(coap_list_t *node) {
-	log_d("%s", __func__);
+	logd("%s", __func__);
   if (node) {
     coap_free(node);
   }
@@ -45,7 +45,7 @@ int coap_delete2(coap_list_t **head, coap_list_t *node) {
 		LL_DELETE(*head, node);
 		return 1;
 	} else{
-		log_e("delete node fail.");
+		loge("delete node fail.");
 		return -1;
 	}
 }
@@ -59,7 +59,7 @@ int coap_list_count(coap_list_t **queue1, coap_list_t ** queue2){
 */
 
 void coap_delete_list(coap_list_t *queue) {
-	log_d("%s", __func__);
+	logd("%s", __func__);
   coap_list_t *elt, *tmp;
 
   if (!queue)

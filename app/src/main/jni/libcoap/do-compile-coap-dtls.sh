@@ -74,7 +74,7 @@ export PLATFORM=posix
 	--disable-examples \
 	--enable-shared \
 	--with-posix \
-	--prefix=$OUTPUT_DIR
+	--prefix=$OUTPUT_DIR \
 	--exec-prefix=$OUTPUT_DIR
 
 make clean
