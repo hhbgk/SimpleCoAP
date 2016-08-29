@@ -1,5 +1,6 @@
 package com.hhbgk.coap.api;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -25,10 +26,12 @@ public class CoAPClient {
     private String mServerIP;
     private List<OnResponseListener> mResponseListeners = new ArrayList<>();
     private SparseArray<OnResponseListener> mSparseArray = new SparseArray<> ();
+
+    private static final int MSG_REQUEST = 1000;
     /** call from native code
      * @param data the data received from remote.
      */
-    public synchronized void onDataReceived(int mid, short token, byte[] data) {
+    public synchronized void onDataReceived(short mid, short token, byte[] data) {
         Log.w(tag, "message id="+ mid+ ", token=" + token + ", onDataReceived:" + new String(data));
         OnResponseListener listener = mSparseArray.get(mid);
         if (listener != null){
@@ -40,10 +43,11 @@ public class CoAPClient {
     private HandlerThread mHandlerThread;
     private Handler mHandler;
     public CoAPClient(String serverIP){
-        this(serverIP, true);
+        this(serverIP, false);
     }
     public CoAPClient(String serverIP, boolean isSecure){
         mServerIP = serverIP;
+        this.isSecure = isSecure;
         nativeInit();
         _setup(serverIP, isSecure);
 
@@ -53,13 +57,7 @@ public class CoAPClient {
             @Override
             public boolean handleMessage(Message msg) {
                 switch (msg.what) {
-                    case 0:
-                        Log.w(tag, "___request____________");
-                        boolean result = _request((Long) msg.obj);
-                        Log.w(tag, "___request____________OK");
-                        if (!result){
-                            Log.e(tag, "Fail to send the request.");
-                        }
+                    case MSG_REQUEST:
                         break;
                 }
                 return false;
@@ -68,9 +66,8 @@ public class CoAPClient {
     }
     private native void nativeInit();
     private native boolean _setup(String ip, boolean isSecure);
-    private native long[] _new_request(int method, short token, String url, String[] query, String payload);
+    private native short _request(int method, short token, String url, String[] query, String payload);
     //private native boolean _request(int method, String url);
-    private native boolean _request(long requestAddress);
     private native boolean _destroy();
 
     public interface OnResponseListener {
@@ -87,32 +84,30 @@ public class CoAPClient {
         isSecure = secure;
     }
 
-    public void request(CoAPRequest request, OnResponseListener listener){
+    public void request(final CoAPRequest request, final OnResponseListener listener){
         if (listener == null)
             throw new NullPointerException("@param listener is null");
         if (TextUtils.isEmpty(mServerIP)){
             listener.onFailure("The param @resource is null.");
             return ;
         }
-        //mResponseListeners.add(listener);
-        String prefix;
-        if (isSecure) {
-            prefix = "coaps://";
-        } else {
-            prefix = "coap://";
-        }
-        //String url = prefix + mServerIP+ "/" + command;
-        long[] address = _new_request(request.getMethod(), request.getToken(), request.getCommand(), request.getCmdParam(), request.getPayload());
-        Log.e(tag, "address[0]=" + address[0]);
-        mSparseArray.put((int) address[1], listener);
-//        mHandler.removeMessages(0);
-//        mHandler.sendMessage(mHandler.obtainMessage(0, address[0]));
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                short msgId = _request(request.getMethod(), request.getToken(), request.getCommand(), request.getCmdParam(), request.getPayload());
+                Log.e(tag, "msgId=" + msgId);
+                if (msgId < 0){
+                    listener.onFailure("Fail to send the request.");
+                } else {
+                    mSparseArray.put((int) msgId, listener);
+                }
+            }
+        });
 
-        boolean result = _request(address[0]);
-        address[0] = 0;
-//        boolean result = _request(method, prefix + mServerIP+ "/" + resource);
-        if (!result){
-            listener.onFailure("Fail to send the request.");
-        }
+        /*Message message = Message.obtain();
+        message.what = MSG_REQUEST;
+        message.obj = listener;
+        Bundle bundle = new Bundle();
+        bundle.putInt("method", );*/
     }
 }

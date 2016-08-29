@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
 
         mEditText = (EditText) findViewById(R.id.edit_url);
         //mEditText.setText(".well-known/core");
-        mEditText.setText("CMDX_");
+        mEditText.setText("CMDX_1");
 
         Button get = (Button) findViewById(R.id.get);
         assert get != null;
@@ -41,13 +41,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                CoAPRequest coAPRequest = new CoAPRequest();
+                final CoAPRequest coAPRequest = new CoAPRequest();
                 coAPRequest.setMethod(CoAPClient.COAP_REQUEST_GET);
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
                 coAPRequest.setToken(Short.parseShort(mEditToken.getText().toString().trim()));
-
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
+
                 request(coAPRequest);
+
             }
         });
 
@@ -60,8 +61,8 @@ public class MainActivity extends AppCompatActivity {
                 coAPRequest.setMethod(CoAPClient.COAP_REQUEST_POST);
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
                 coAPRequest.setToken(Short.parseShort(mEditToken.getText().toString().trim()));
-
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
+
                 request(coAPRequest);
             }
         });
