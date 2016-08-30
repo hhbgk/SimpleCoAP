@@ -22,6 +22,8 @@ public class CoAPClient {
 
     public static final int COAP_REQUEST_GET       = 1;
     public static final int COAP_REQUEST_POST      = 2;
+
+    public static final int COAP_NO_TOKEN = -1;
     private boolean isSecure = false;//switch of Datagram Transport Layer Security
     private String mServerIP;
     private List<OnResponseListener> mResponseListeners = new ArrayList<>();

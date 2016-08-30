@@ -31,7 +31,6 @@
 
 #include "coap.h"
 #include "coap_dtls.h"
-#include "coap_list.h"
 
 #ifdef __ANDROID__
 

@@ -2,6 +2,7 @@ package com.hhbgk.coap;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -33,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
         mEditText = (EditText) findViewById(R.id.edit_url);
         //mEditText.setText(".well-known/core");
-        mEditText.setText("CMDX_1");
+        mEditText.setText(".well-known/core");
 
         Button get = (Button) findViewById(R.id.get);
         assert get != null;
@@ -44,7 +45,8 @@ public class MainActivity extends AppCompatActivity {
                 final CoAPRequest coAPRequest = new CoAPRequest();
                 coAPRequest.setMethod(CoAPClient.COAP_REQUEST_GET);
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
-                coAPRequest.setToken(Short.parseShort(mEditToken.getText().toString().trim()));
+                String token = mEditToken.getText().toString().trim();
+                coAPRequest.setToken(TextUtils.isEmpty(token) ? CoAPClient.COAP_NO_TOKEN : Short.parseShort(token));
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
 
                 request(coAPRequest);
@@ -60,7 +62,8 @@ public class MainActivity extends AppCompatActivity {
                 CoAPRequest coAPRequest = new CoAPRequest();
                 coAPRequest.setMethod(CoAPClient.COAP_REQUEST_POST);
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
-                coAPRequest.setToken(Short.parseShort(mEditToken.getText().toString().trim()));
+                String token = mEditToken.getText().toString().trim();
+                coAPRequest.setToken(TextUtils.isEmpty(token) ? CoAPClient.COAP_NO_TOKEN : Short.parseShort(token));
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
 
                 request(coAPRequest);

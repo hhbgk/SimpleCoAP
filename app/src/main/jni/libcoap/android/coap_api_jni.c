@@ -2,17 +2,7 @@
 
 int flags = 0;
 
-static unsigned char _token_data[8];
-str the_token = { 0, _token_data };
-
-typedef unsigned char method_t;
-method_t method = 1;                    /* the method we are using in our requests */
-
 static str payload = { 0, NULL };       /* optional payload to send */
-
-unsigned char msgtype = COAP_MESSAGE_CON; /* usually, requests are sent confirmable */
-
-coap_block_t block = { .num = 0, .m = 0, .szx = 6 };
 
 unsigned int wait_seconds = 10;//90;         /* default timeout in seconds */
 coap_tick_t max_wait;                   /* global timeout (changed by set_timeout()) */
@@ -22,8 +12,6 @@ coap_tick_t obs_wait = 0;               /* timeout for current subscription */
 int observe = 0;                        /* set to 1 if resource is being observed */
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
-
-static coap_list_t *optlist = NULL;
 
 #define JNI_CLASS_IJKPLAYER     "com/hhbgk/coap/api/CoAPClient"
 #define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
@@ -70,73 +58,6 @@ static int append_to_output(struct coap_context_t *ctx, coap_pdu_t *received, co
     (*env)->DeleteLocalRef(env, jArray);
 
     return 0;
-}
-
-static coap_tid_t clear_obs(coap_context_t *ctx,const coap_endpoint_t *local_interface, const coap_address_t *remote) {
-	logd("%s", __func__);
-    coap_pdu_t *pdu;
-    coap_list_t *option;
-    coap_tid_t tid = COAP_INVALID_TID;
-    unsigned char buf[2];
-
-    /* create bare PDU w/o any option  */
-    pdu = coap_pdu_init(msgtype, COAP_REQUEST_GET, coap_new_message_id(ctx), COAP_MAX_PDU_SIZE);
-
-    if (!pdu) {
-        return tid;
-    }
-
-    if (!coap_add_token(pdu, the_token.length, the_token.s)) {
-        loge("cannot add token");
-        goto error;
-    }
-
-    for (option = optlist; option; option = option->next ) {
-        coap_option *o = (coap_option *)(option->data);
-        if (COAP_OPTION_KEY(*o) == COAP_OPTION_URI_HOST) {
-            if (!coap_add_option(pdu, COAP_OPTION_KEY(*o), COAP_OPTION_LENGTH(*o),COAP_OPTION_DATA(*o))) {
-                goto error;
-            }
-            break;
-        }
-    }
-
-    if (!coap_add_option(pdu,COAP_OPTION_OBSERVE,coap_encode_var_bytes(buf, COAP_OBSERVE_CANCEL),buf)) {
-        coap_log(LOG_CRIT, "cannot add option Observe: %u", COAP_OBSERVE_CANCEL);
-        goto error;
-    }
-
-    for (option = optlist; option; option = option->next ) {
-        coap_option *o = (coap_option *)(option->data);
-        switch (COAP_OPTION_KEY(*o)) {
-            case COAP_OPTION_URI_PORT :
-            case COAP_OPTION_URI_PATH :
-            case COAP_OPTION_URI_QUERY :
-                if (!coap_add_option (pdu,COAP_OPTION_KEY(*o),COAP_OPTION_LENGTH(*o),COAP_OPTION_DATA(*o))) {
-                    goto error;
-                }
-                break;
-            default:
-                ;
-        }
-    }
-
-    if (pdu->hdr->type == COAP_MESSAGE_CON)
-        tid = coap_send_confirmed(ctx, local_interface, remote, pdu);
-    else
-        tid = coap_send(ctx, local_interface, remote, pdu);
-
-    if (tid == COAP_INVALID_TID) {
-        logi("clear_obs: error sending new request");
-        coap_delete_pdu(pdu);
-    } else if (pdu->hdr->type != COAP_MESSAGE_CON)
-        coap_delete_pdu(pdu);
-
-    return tid;
-error:
-
-    coap_delete_pdu(pdu);
-    return tid;
 }
 
 static int resolve_address(const str *server, struct sockaddr *dst) {
@@ -191,7 +112,6 @@ static void message_handler(struct coap_context_t *ctx, const coap_endpoint_t *l
 	coap_opt_t *block_opt;
 	coap_opt_iterator_t opt_iter;
 	unsigned char buf[4];
-	coap_list_t *option;
 	size_t len;
 	unsigned char *databuf;
 	coap_tid_t tid;
@@ -388,6 +308,28 @@ static coap_context_t *get_context(const char *node, const char *port, int secur
     return ctx;
 }
 
+static void split_uri_path(coap_pdu_t **pdu, unsigned char *uri, uint32_t length){
+	logd("%s", __func__);
+	unsigned char *p, *q;
+	unsigned char uri_path[128];
+	p = uri;
+	q = p;
+
+	logi("%s, %d", uri, length);
+	while(length && *p){
+		if(*p == '/'){
+			memcpy(uri_path, q, p-q);
+			//loge("uri_path=%s", uri_path);
+			coap_add_option(pdu, COAP_OPTION_URI_PATH, p-q, uri_path);
+			q = ++p;
+		}
+		++p;
+		--length;
+	}
+	//loge("q=%s", q);
+	coap_add_option(pdu, COAP_OPTION_URI_PATH, strlen(q), q);
+}
+
 static void jni_native_init(JNIEnv *env, jobject thiz){
     //保存全局JVM以便在子线程中使用
     (*env)->GetJavaVM(env,&g_jvm);
@@ -483,7 +425,6 @@ static jboolean jni_coap_setup(JNIEnv *env, jobject thiz, jstring str_ip, jboole
 
 err:
     loge("-------error-------");
-    coap_delete_list(optlist);
     coap_free_context( client.ctx );
 fail:
     loge("-------fail-------");
@@ -499,7 +440,7 @@ static jshort jni_coap_request(JNIEnv *env, jobject thiz, jint method, jshort to
 	if (!(pdu = coap_new_pdu()))
 		goto ERR_OUT;
 
-	pdu->hdr->type = msgtype;
+	pdu->hdr->type = COAP_MESSAGE_CON;
 	pdu->hdr->id = coap_new_message_id(client.ctx);
 	pdu->hdr->code = method;
 
@@ -508,7 +449,7 @@ static jshort jni_coap_request(JNIEnv *env, jobject thiz, jint method, jshort to
 		goto ERR_OUT;
 	}
 
-	if(token != NULL){//Add token
+	if(token >= 0){//Add token
 		logi("token=%d, token size=%d", token, sizeof(token));
 		pdu->hdr->token_length = sizeof(token);
 		if (!coap_add_token(pdu, sizeof(token), &token)) {
@@ -520,9 +461,10 @@ static jshort jni_coap_request(JNIEnv *env, jobject thiz, jint method, jshort to
 	coap_add_option(pdu, COAP_OPTION_SUBSCRIPTION, 0, NULL);
 
 	///Add URI
-	const char *c_url = (*env)->GetStringUTFChars(env, url, NULL);
-	logi("url:%s %s", method == 1 ? "GET" : method == 2 ? "POST" : "unknown", c_url);
-	coap_add_option(pdu, COAP_OPTION_URI_PATH, strlen(c_url), c_url);
+	const unsigned char *c_url = (*env)->GetStringUTFChars(env, url, NULL);
+	length = (*env)->GetStringLength(env, url);
+	logi("url:%s %s, length=%d", method == 1 ? "GET" : method == 2 ? "POST" : "unknown", c_url, length);
+	split_uri_path(pdu, c_url, length);
 	(*env)->ReleaseStringUTFChars(env, url, c_url);
 
 	if(stringArray != NULL){///Add query
@@ -588,13 +530,6 @@ void *msg_runnable(void *arg) {
 			if ((unsigned int) result <= obs_wait) {
 				obs_wait -= result;
 				loge("obs_wait=%d", obs_wait);
-			} else if (observe) {
-				logi("clear observation relationship\n");
-				clear_obs(client.ctx, client.ctx->endpoint, &client.dst); // FIXME: handle error case COAP_TID_INVALID
-
-				/* make sure that the obs timer does not fire again */
-				obs_wait = 0;
-				observe = 0;
 			}
 			coap_ticks(&now);
 
@@ -604,16 +539,16 @@ void *msg_runnable(void *arg) {
 			}
 		}
 	}
-	pthread_exit(NULL);
 	logi("msg_runnable exit.....");
+	pthread_exit(NULL);
+	logi("Never reach here");
 	return NULL;
 }
 
 static jboolean jni_coap_destroy(JNIEnv *env, jobject thiz){
     logi("%s", __func__);
-    coap_delete_list(optlist);
+    client.msg_thread_running = 0;
     if(client.ctx){
-        client.msg_thread_running = 0;
         coap_free_context( client.ctx );
     }
     return JNI_TRUE;
