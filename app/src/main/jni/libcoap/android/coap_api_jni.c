@@ -349,42 +349,45 @@ static void jni_native_init(JNIEnv *env, jobject thiz){
     }
 }
 
-static jboolean jni_coap_setup(JNIEnv *env, jobject thiz, jstring str_ip, jboolean isSecure) {
-	logi("%s", __func__);
-
-	static char addr[INET6_ADDRSTRLEN];
-	void *addrptr = NULL;
-	int result = -1;
-	coap_pdu_t  *request;
+static jboolean jni_coap_set_ip(JNIEnv *env, jobject thiz, jstring str_ip){
+	logd("%s", __func__);
 	static str server;
-	unsigned short port = COAP_DEFAULT_PORT;
-	char port_str[NI_MAXSERV] = "5683";
-	int opt, res;
-	coap_log_t log_level = 6;//LOG_WARNING;
-	coap_tid_t tid = COAP_INVALID_TID;
-	unsigned char user[MAX_USER], key[MAX_KEY];
-	ssize_t user_length = 0, key_length = 0;
-
-	coap_dtls_set_log_level(log_level);
-	coap_set_log_level(log_level);
-
+	int res;
 	const char *c_ip = (*env)->GetStringUTFChars(env, str_ip, NULL);
 	server.s = c_ip;
 	server.length = strlen(c_ip);
 	/* resolve destination address where server should be sent */
 	res = resolve_address(&server, &client.dst.addr.sa);
 	if (res < 0) {
-	loge("failed to resolve address\n");
+		loge("failed to resolve address\n");
 		goto fail;
 	}
 	client.dst.size = res;
-	client.dst.addr.sin.sin_port = htons(port);
+	client.dst.addr.sin.sin_port = htons(COAP_DEFAULT_PORT);
 
 	/* add Uri-Host if server address differs from uri.host */
 	if(client.dst.addr.sa.sa_family != AF_INET){
 		goto fail;
 	}
-	client.secure = isSecure;
+    return JNI_TRUE;
+
+fail:
+    loge("Fail to set ip");
+    return JNI_FALSE;
+}
+
+static jboolean jni_coap_setup(JNIEnv *env, jobject thiz) {
+	logi("%s", __func__);
+
+	char port_str[NI_MAXSERV] = "5683";
+	coap_log_t log_level = 6;//LOG_WARNING;
+	unsigned char user[MAX_USER], key[MAX_KEY];
+	ssize_t user_length = 0, key_length = 0;
+
+	coap_dtls_set_log_level(log_level);
+	coap_set_log_level(log_level);
+
+	client.secure = 0;
 	/* create context for IPv4 */
 	client.ctx = get_context("0.0.0.0", port_str, client.secure);
 	if (!client.ctx) {
@@ -415,14 +418,13 @@ static jboolean jni_coap_setup(JNIEnv *env, jobject thiz, jstring str_ip, jboole
     coap_register_response_handler(client.ctx, message_handler);
 
     ////Create thread for listening remote device messages
-   int thread_ret = pthread_create(&client.msg_thread, NULL, msg_runnable, NULL);
+    int thread_ret = pthread_create(&client.msg_thread, NULL, msg_runnable, NULL);
     if(0 != thread_ret) {
         loge("can't create thread");
         goto fail;
     }
 
     return JNI_TRUE;
-
 err:
     loge("-------error-------");
     coap_free_context( client.ctx );
@@ -555,7 +557,8 @@ static jboolean jni_coap_destroy(JNIEnv *env, jobject thiz){
 }
 static JNINativeMethod g_methods[] = {
     { "nativeInit",         "()V",                                               (void *) jni_native_init },
-    { "_setup",             "(Ljava/lang/String;Z)Z",                            (void *) jni_coap_setup },
+    { "_setIP",             "(Ljava/lang/String;)Z",                            (void *) jni_coap_set_ip },
+    { "_setup",             "()Z",                            					(void *) jni_coap_setup },
     { "_request",       "(ISLjava/lang/String;[Ljava/lang/String;Ljava/lang/String;)S",      (void *) jni_coap_request },
     { "_destroy",           "()Z",                                               (void *) jni_coap_destroy },
 };

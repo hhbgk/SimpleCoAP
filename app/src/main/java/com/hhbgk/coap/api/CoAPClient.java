@@ -44,14 +44,12 @@ public class CoAPClient {
 
     private HandlerThread mHandlerThread;
     private Handler mHandler;
-    public CoAPClient(String serverIP){
-        this(serverIP, false);
-    }
-    public CoAPClient(String serverIP, boolean isSecure){
-        mServerIP = serverIP;
-        this.isSecure = isSecure;
+
+    public CoAPClient(){
         nativeInit();
-        _setup(serverIP, isSecure);
+        if(!_setup()){
+            Log.e(tag, "Setup failure");
+        }
 
         mHandlerThread = new HandlerThread("HandlerThread_"+new Random().nextInt(Integer.MAX_VALUE));
         mHandlerThread.start();
@@ -67,10 +65,15 @@ public class CoAPClient {
         });
     }
     private native void nativeInit();
-    private native boolean _setup(String ip, boolean isSecure);
-    private native short _request(int method, short token, String url, String[] query, String payload);
-    //private native boolean _request(int method, String url);
+    private native boolean _setIP(String serverIP);
     private native boolean _destroy();
+    private native boolean _setup();
+    private native short _request(int method, short token, String url, String[] query, String payload);
+
+    public boolean setServerIP(String serverIP){
+        mServerIP = serverIP;
+        return _setIP(serverIP);
+    }
 
     public interface OnResponseListener {
         void onSuccess(byte[] data);
@@ -80,10 +83,6 @@ public class CoAPClient {
     public void release(){
         mResponseListeners.clear();
         _destroy();
-    }
-
-    public void setSecure(boolean secure){
-        isSecure = secure;
     }
 
     public void request(final CoAPRequest request, final OnResponseListener listener){

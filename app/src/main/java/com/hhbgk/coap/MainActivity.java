@@ -29,12 +29,13 @@ public class MainActivity extends AppCompatActivity {
         mEditToken = (EditText) findViewById(R.id.edit_token);
 
         if (coAPClient == null) {
-            coAPClient = new CoAPClient("192.168.9.191");
+            coAPClient = new CoAPClient();
         }
+        coAPClient.setServerIP("192.168.9.161");
 
         mEditText = (EditText) findViewById(R.id.edit_url);
         //mEditText.setText(".well-known/core");
-        mEditText.setText(".well-known/core");
+        mEditText.setText("CMDX_2");
 
         Button get = (Button) findViewById(R.id.get);
         assert get != null;
@@ -47,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
                 String token = mEditToken.getText().toString().trim();
                 coAPRequest.setToken(TextUtils.isEmpty(token) ? CoAPClient.COAP_NO_TOKEN : Short.parseShort(token));
+                //coAPRequest.setCmdParam(new String[]{"123456"});
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
 
                 request(coAPRequest);
@@ -64,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
                 coAPRequest.setCommand(mEditText.getText().toString().trim());
                 String token = mEditToken.getText().toString().trim();
                 coAPRequest.setToken(TextUtils.isEmpty(token) ? CoAPClient.COAP_NO_TOKEN : Short.parseShort(token));
+                coAPRequest.setCmdParam(new String[]{"123456"});
                 coAPRequest.setPayload(mEditPayload.getText().toString().trim());
 
                 request(coAPRequest);
